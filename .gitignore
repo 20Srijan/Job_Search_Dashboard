@@ -1,0 +1,18 @@
+# Local sessions and personal records
+.local-browser/
+.runtime/
+.venv/
+job_scraper/
+documents/
+cv/
+cover_letters/
+outbox/
+backups/
+PROFILE-AND-TIMELINE.md
+job_search_tracker.csv
+OPEN-DASHBOARD.html
+__pycache__/
+*.pyc
+*.log
+.env
+.env.*
