@@ -4,7 +4,7 @@ A Python dashboard for manually discovering, reviewing and tracking Denmark stud
 
 ## What it does
 - Per-website search controls and a separate candidate review inbox.
-- Public-site discovery adapters, plus a dedicated Playwright/Chromium browser for JobTeaser and LinkedIn. Sign in directly in the local browser.
+- Public-site discovery adapters, plus a dedicated Playwright/Chromium browser for JobTeaser, LinkedIn, Jobdanmark and The Hub. Sign in directly in the local browser.
 - Publication-date checks, duplicate detection and preservation of removed jobs and user edits.
 - Saved-job sorting by fit and deadline, application statuses, dates, notes and document attachments.
 - Search-health reporting that distinguishes checked, partial, blocked and unverifiable coverage.
@@ -25,7 +25,7 @@ Empty records and a generic local preferences file are created automatically. Ed
 
 ## Limitations and verification
 - Public-source adapters depend on each site's markup and available original posting dates.
-- Browser searches are bounded to ten result pages and forty relevant details, not exhaustive inventories.
+- Browser searches are bounded to 100 result pages and 200 student details, not exhaustive inventories.
 - New browser discovery requires an original publication date within seven days. Unknown dates and login/website failures are reported rather than presented as successful coverage.
 - Fixture tests check publication freshness, login detection, duplicate handling and a two-page search loop. Live signed-in portal reliability and real browser persistence require validation on the user's PC.
 - Fit, English eligibility, exact workplace, actual cycle route and monthly working hours need human verification. Weekly hours are not an actual monthly roster.
@@ -50,8 +50,7 @@ Run `python -m unittest test_browser_search -v`. These tests use fixtures and ma
 ## Development decisions
 See [PROJECT.md](PROJECT.md) for the problem, workflow and personal contribution.
 
-## Latest dashboard update
-- Click the deadline summary card to show jobs due today through the next seven calendar days.
-- The shortlist includes an All deadlines / Due within 7 days filter; Show all retained jobs clears it.
-- Removed the separate deadline-reminders panel to avoid duplicate deadline information.
-- The deadline count and filtered list use the same rules and Denmark calendar dates.
+## Independent-search and startup update
+Search all websites now runs public readers followed by browser readers. The launcher keeps the service running in its window; keep it open. The dashboard opens in the default browser after a successful local API check. Sign in directly in the dedicated browser when needed. Offline copies explain that they cannot run searches. Connection failures now show an error rather than waiting indefinitely. Ramboll is included in public discovery.
+
+The summary cards filter saved jobs, active applications, interviews and deadlines. Applied jobs appear under active applications. Design/UI/UX roles are excluded from the technical discovery rules. The distributed profile panel is generic; personal education and project history are not included. Local startup was confirmed by the user; live signed-in website integration remains to be validated.

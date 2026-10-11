@@ -23,6 +23,26 @@ LOCK = threading.Lock()
 SEARCH = Runner()
 BROWSER = BrowserService()
 OPERATION_LOCK = threading.Lock()
+ALL_STATE = {'running': False, 'message': 'Ready'}
+
+def search_all():
+    """One manual command: public readers, then dedicated browser readers."""
+    try:
+        ALL_STATE.update(message='Searching public websites…')
+        SEARCH.start('all', 7)
+        import time
+        while SEARCH.state.get('running'): time.sleep(.25)
+        ALL_STATE.update(message='Searching browser websites. Sign in directly if a site asks.')
+        if ALL_STATE.get('stop_requested'):
+            ALL_STATE.update(message='Search stopped by you.')
+            return
+        BROWSER.submit('all')
+        while BROWSER.snapshot().get('running'): time.sleep(.25)
+        ALL_STATE.update(message='All search attempts finished. Check website coverage and new candidates.')
+    except Exception as exc:
+        ALL_STATE.update(message='Search stopped: ' + str(exc))
+    finally:
+        ALL_STATE['running'] = False
 ALLOWED = ('documents', 'cv', 'cover_letters', 'outbox')
 
 def read_json(path, default):
@@ -76,7 +96,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/data':
                 return self.reply({'jobs': rows(), 'documents': documents(), 'profile': (ROOT / 'PROFILE-AND-TIMELINE.md').read_text(encoding='utf-8'), 'search_health': read_json(ROOT / 'job_scraper/search_health.json', []), 'token': TOKEN})
             if path == '/api/search':
-                return self.reply({'run': SEARCH.state, 'browser': BROWSER.snapshot(), 'candidates': list(read_json(ROOT / 'job_scraper/candidate_inbox.json', {}).values()),'sources':[{'name':name,'url':url,'browser_required':name in BROWSER_SITES} for name,url,_ in sources('all')]})
+                return self.reply({'all': dict(ALL_STATE), 'run': SEARCH.state, 'browser': BROWSER.snapshot(), 'candidates': list(read_json(ROOT / 'job_scraper/candidate_inbox.json', {}).values()),'sources':[{'name':name,'url':url,'browser_required':name in BROWSER_SITES} for name,url,_ in sources('all')]})
             if path == '/':
                 return self.reply((ROOT / 'index.html').read_bytes(), mime='text/html; charset=utf-8')
             if path.startswith('/files/'):
@@ -103,16 +123,23 @@ class Handler(BaseHTTPRequestHandler):
                 with GUARD:return self.reply(import_page(ROOT,item))
             if self.path == '/api/browser':
                 with OPERATION_LOCK:
-                    if SEARCH.state.get('running') and item.get('action') != 'stop':
+                    if (SEARCH.state.get('running') or ALL_STATE['running']) and item.get('action') != 'stop':
                         raise ValueError('Wait for the public search to finish')
+                    if item.get('action') == 'stop':
+                        ALL_STATE['stop_requested'] = True
+                        SEARCH.stop_requested = True
                     BROWSER.submit(item.get('action'),item.get('site'))
                 return self.reply({'started':True})
             if self.path == '/api/search':
                 group=item.get('group','all')
                 if group not in ('all','weekday','twice') and group not in {name for name,_,_ in sources('all')}:raise ValueError('Invalid search source')
                 with OPERATION_LOCK:
+                    if ALL_STATE['running']:raise ValueError('Wait for Search all to finish')
                     if BROWSER.snapshot().get('running'):raise ValueError('Wait for the browser search to finish')
-                    if group in BROWSER_SITES:BROWSER.submit('search',group)
+                    if group == 'all':
+                        ALL_STATE.update(running=True,stop_requested=False,message='Starting all website searches')
+                        threading.Thread(target=search_all,daemon=True).start()
+                    elif group in BROWSER_SITES:BROWSER.submit('search',group)
                     else:SEARCH.start(group,7)
                 return self.reply({'started':True})
             if self.path == '/api/inbox':

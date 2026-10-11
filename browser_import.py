@@ -8,6 +8,8 @@ def site_for(url):
  parsed=urlparse(url)
  if parsed.scheme!='https':raise ValueError('HTTPS job page required')
  host=parsed.hostname or ''
+ if host=='jobdanmark.dk':return 'Jobdanmark'
+ if host=='thehub.io':return 'The Hub'
  if host=='dtu.jobteaser.com':return 'DTU JobTeaser'
  if host in ('www.linkedin.com','linkedin.com'):return 'LinkedIn Jobs'
  raise ValueError('Only DTU JobTeaser and LinkedIn Jobs captures are supported')
@@ -41,7 +43,7 @@ def import_page(root,payload):
   except ValueError:posted='';unknown+=1
   company=raw.get('company','');description=raw.get('description','')
   if not isinstance(company,str) or not isinstance(description,str):raise ValueError('Invalid job text')
-  inbox[key]={'id':key,'url':url,'role':title[:300],'company':company[:300],'source':site,'location':'','posted_date':posted,'deadline':'','description':description[:2500],'state':'pending','discovered_at':stamp(),'why_fit':'Student technical/design keyword match from a page you opened in Chrome; fit not yet verified.','missing':('Publication date unverified; confirm freshness before saving. ' if not posted else '')+'Verify original posting, English eligibility, skills, workplace, commute and actual monthly roster. Current page only; other pages were not searched.'}
+  inbox[key]={'id':key,'url':url,'role':title[:300],'company':company[:300],'source':site,'location':'','posted_date':posted,'deadline':'','description':description[:2500],'state':'pending','discovered_at':stamp(),'why_fit':'Student AI/software/electronics keyword match from a page you opened in Chrome; fit not yet verified.','missing':('Publication date unverified; confirm freshness before saving. ' if not posted else '')+'Verify original posting, English eligibility, skills, workplace, commute and actual monthly roster. Current page only; other pages were not searched.'}
   added+=1
   if company:identities.add(identity(raw))
  write(inboxpath,inbox)

@@ -17,11 +17,13 @@ from browser_import import import_page
 
 ROOT = Path(__file__).resolve().parent
 SITES = {
-    'DTU JobTeaser': 'https://dtu.jobteaser.com/en/job-offers?contract=part_time&localized_location=Denmark&location=Denmark&sort=recency',
+    'DTU JobTeaser': 'https://dtu.jobteaser.com/en/job-offers?contract=part_time&localized_location=Denmark&location=Denmark&q=student&sort=recency',
+    'Jobdanmark': 'https://jobdanmark.dk/jobsoeger/find-job?freetext=student',
+    'The Hub': 'https://thehub.io/jobs?countryCode=DK&search=student&sorting=newJobs',
     'LinkedIn Jobs': 'https://www.linkedin.com/jobs/search/?keywords=student&location=Copenhagen%2C%20Denmark&f_TPR=r604800&sortBy=DD',
 }
-MAX_PAGES = 10
-MAX_DETAILS = 40
+MAX_PAGES = 100
+MAX_DETAILS = 200
 
 # Read public job elements only. Never read form values, cookies or browser storage.
 EXTRACT = r'''() => ({url:location.href, title:document.title,
@@ -38,6 +40,10 @@ def job_link(site, url):
         return False
     if site == 'DTU JobTeaser':
         return p.hostname == 'dtu.jobteaser.com' and bool(re.fullmatch(r'/(en|da)/job-offers/[^/]+/?', p.path))
+    if site == 'Jobdanmark':
+        return p.hostname == 'jobdanmark.dk' and bool(re.fullmatch(r'/job/[^/]+/?', p.path))
+    if site == 'The Hub':
+        return p.hostname == 'thehub.io' and bool(re.fullmatch(r'/jobs/[a-f0-9]{24}/?', p.path))
     return p.hostname in ('linkedin.com', 'www.linkedin.com') and bool(re.match(r'^/jobs/view/\d+/?$', p.path))
 
 def blocked_reason(site, snapshot):
@@ -47,7 +53,7 @@ def blocked_reason(site, snapshot):
         return 'Website verification or access restriction needs your attention. Nothing was bypassed.'
     if any(word in url for word in ('/login', '/signin', '/sign_in', '/auth', 'login.microsoftonline.com', '/uas/')):
         return 'Sign in directly in the dedicated browser, then click Search again.'
-    if urlparse(url).hostname not in ('dtu.jobteaser.com', 'linkedin.com', 'www.linkedin.com'):
+    if urlparse(url).hostname != urlparse(SITES[site]).hostname:
         return 'Sign in directly in the dedicated browser, then click Search again.'
     if not any(job_link(site, link['url']) for link in snapshot.get('links', [])) and ('sign in to view' in text or 'log in to view' in text):
         return 'Sign in directly in the dedicated browser, then click Search again.'
@@ -77,6 +83,16 @@ def parse_posting(site, url, snapshot, today=None):
     if 'FULL_TIME' in employment and 'PART_TIME' not in employment:
         return None, 'Structured posting specifies full-time employment'
     raw_date = str(posting.get('datePosted', ''))[:10]
+    # Only explicit Published/Posted labels, never updated/submitted dates.
+    if not raw_date and site == 'Jobdanmark':
+        match = re.search(r'(?:Published|Udgivet):\s*(\d{2})-(\d{2})-(\d{4})', description, re.I)
+        if match:
+            raw_date = f'{match[3]}-{match[2]}-{match[1]}'
+    if not raw_date and site == 'DTU JobTeaser':
+        match = re.search(r'(?:Published on|Publication date)\s*:?\s*(\d{1,2} [A-Za-z]+ \d{4})', description, re.I)
+        if match:
+            try: raw_date = datetime.strptime(match[1], '%d %B %Y').date().isoformat()
+            except ValueError: pass
     try:
         published = datetime.strptime(raw_date, '%Y-%m-%d').date()
     except ValueError:
@@ -126,7 +142,7 @@ class BrowserService:
             self.state.update(fields)
 
     def submit(self, action, site=None):
-        if action not in ('open', 'search', 'stop') or site and site not in SITES:
+        if action not in ('open', 'search', 'all', 'stop') or site and site not in SITES:
             raise ValueError('Unknown browser action or site')
         if action == 'search' and not site:
             raise ValueError('Choose a website')
@@ -189,6 +205,17 @@ class BrowserService:
                         page.goto(SITES[site], wait_until='domcontentloaded', timeout=30000)
                         page.bring_to_front()
                     self.update(status='ready', message='Browser opened. Sign in directly, then click the website Search button.')
+                elif action == 'all':
+                    results = []
+                    for name in SITES:
+                        if self.stop_requested.is_set(): break
+                        try:
+                            self.search(name)
+                            results.append({'site': name, **self.snapshot()})
+                        except Exception as exc:
+                            self.health(name, 'Blocked / failed', str(exc)[:600])
+                            results.append({'site': name, 'status': 'failed', 'message': str(exc)[:600]})
+                    self.update(status='finished', message='Browser searches finished. Review each website’s coverage and login messages.', results=results)
                 else:
                     self.search(site)
             except Exception as exc:
@@ -222,9 +249,18 @@ class BrowserService:
         jobs, visited, exclusions = {}, set(), {}
         pages_read = 0
         reason = ''
+        complete = False
         for number in range(MAX_PAGES):
             if self.stop_requested.is_set():
                 reason = 'Stopped by user'; break
+            if site == 'LinkedIn Jobs':
+                # Load lazy result cards before collecting links; scrolling is read-only.
+                for _ in range(12):
+                    before = page.locator('.job-card-container').count()
+                    page.locator('.jobs-search-results-list').evaluate('(e) => e.scrollTop = e.scrollHeight')
+                    page.wait_for_timeout(500)
+                    after = page.locator('.job-card-container').count()
+                    if after >= 25 or after == before: break
             snapshot = page.evaluate(EXTRACT)
             reason = blocked_reason(site, snapshot)
             if reason:
@@ -246,9 +282,16 @@ class BrowserService:
             # Accessible next-page controls only; never guess URL pagination parameters.
             next_button = page.get_by_role('button', name=re.compile(r'^(?:go to )?(next(?: page)?|suivant|næste(?: side)?)$', re.I))
             next_link = page.locator('a[rel="next"]')
+            if not next_button.count() and not next_link.count():
+                next_link = page.get_by_role('link', name=re.compile(r'^(next|næste|next page|næste side)$', re.I))
+            if site == 'LinkedIn Jobs' and not next_button.count():
+                next_button = page.get_by_role('button', name=re.compile(r'View next page|Page ' + str(number + 2) + r'$', re.I))
             target = next_button if next_button.count() else next_link
             if not target.count() or not target.first.is_visible() or not target.first.is_enabled():
-                reason = 'No supported next-page control; further results unverified'; break
+                if links and re.search(r'Page \d+ of \d+|\bNext\b|\bNæste\b', snapshot['text'], re.I):
+                    reason = 'Pagination could not be verified'; break
+                complete = True
+                reason = 'Reached end of displayed result pages'; break
             if number == MAX_PAGES - 1:
                 reason = 'Result-page safety limit reached'; break
             target.first.click()
@@ -292,10 +335,10 @@ class BrowserService:
                 # Preserve earlier candidates and all reviewed/user records.
                 if key in inbox and inbox[key].get('discovered_at', '') >= started:
                     inbox[key].update(location=item['location'], deadline=item['deadline'], description=item['description'],
-                        why_fit='Student technical/design keyword match from original posting; fit still requires review.',
+                        why_fit='Student AI/software/electronics keyword match from original posting; fit still requires review.',
                         missing='Verify mandatory skills, English eligibility, exact workplace, cycling route ≤25 km, commute ≤90 minutes and actual calendar-month roster ≤90 hours.')
             write(path, inbox)
-        status = 'needs_attention' if ('Sign in' in reason or 'verification' in reason) else 'stopped' if self.stop_requested.is_set() else 'partial'
+        status = 'needs_attention' if ('Sign in' in reason or 'verification' in reason) else 'stopped' if self.stop_requested.is_set() else 'completed_targeted' if complete and len(jobs) <= MAX_DETAILS and not exclusions.get('Posting could not be read') else 'partial'
         message = f'{site}: {pages_read} result pages, {details} postings checked, {result["added"]} new candidates. {reason}. Publication filter: seven days.'
         self.health(site, 'Browser search · ' + status, message + ' Exclusions: ' + json.dumps(exclusions))
         self.update(status=status, message=message, pages_read=pages_read, details_checked=details, added=result['added'])

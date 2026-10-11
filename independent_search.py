@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 from zoneinfo import ZoneInfo
 ROOT=Path(__file__).resolve().parent
 TZ=ZoneInfo('Europe/Paris')
-UA='LocalJobDashboard/1.0'
+UA='SrijanJobDashboard/1.0'
 GUARD=threading.Lock()
 
 def read(path,default):
@@ -54,8 +54,9 @@ def jobs_from_ld(value):
 
 def plain(text):return re.sub(r'\s+',' ',html.unescape(re.sub('<[^>]+>',' ',str(text)))).strip()
 def relevant(text):
+ if re.search(r"\bui[ /-]*ux\b|\b(?:ui|ux)\s+(?:developer|designer|design)|user.experience.design|user.interface.design",text,re.I):return False
  if re.search(r'\bph\.?d\b|postdoc|professor|thesis|speciale',text,re.I):return False
- return bool(re.search(r'student|studentermedhj|studiejob|working.student',text,re.I)) and bool(re.search(r'fpga|asic|\brtl\b|electronic|elektronik|embedded|hardware|test|\bqa\b|design|graphic|grafisk|software|python|iot|automation|compliance|laborator|validation|digital|content|social.media|communication|kommunikation|sensor|it.support',text,re.I))
+ return bool(re.search(r'student|studentermedhj|studiejob|working.student',text,re.I)) and bool(re.search(r'fpga|asic|\brtl\b|electronic|elektronik|embedded|hardware|test|\bqa\b|software|python|iot|automation|compliance|laborator|validation|machine.learning|data.anal|artificial.intelligence|\bai\b|sensor|it.support',text,re.I))
 
 def search_response(text):
  marker='var Stash = '
@@ -111,8 +112,8 @@ class PublicClient:
   self.last[base]=time.monotonic();return self.raw(url)
 
 def sources(group):
- weekday=[('DTU JobTeaser','https://dtu.jobteaser.com/en/job-offers',r'/job-offers/.+'),('LinkedIn Jobs','https://www.linkedin.com/jobs/search/?'+urlencode({'keywords':'student electronics testing design','location':'Copenhagen, Denmark','f_TPR':'r604800','sortBy':'DD'}),r'/jobs/view/'),('Jobindex','https://www.jobindex.dk/jobsoegning?q=student&jobage=7&sort=date',r'/jobannonce/'),('StuderendeOnline','https://studerendeonline.dk/job/?cvtype=4&amt=2&amt=3&oprettet='+datetime.now(TZ).strftime('%d.%m.%Y'),r'/job/\d+/')]
- twice=[('Jobdanmark','https://jobdanmark.dk/jobsoeger/find-job',r'/job/'),('Jobbank','https://jobbank.dk/job/?cvtype=4&amt=2&amt=3',r'/job/\d+/'),('Workindenmark','https://workindenmark.jobnet.dk/find-job',r'/job'),('The Hub','https://thehub.io/jobs?countryCode=DK&search=student',r'/jobs/[a-f0-9]{24}'),('Demant/Oticon','https://careers.demant.com/',r'/job/'),('GN','https://www.gn.com/Working-with-us',r'/job'),('Presto Engineering','https://www.presto-eng.com/career-page',r'/job|career'),('Napatech','https://www.napatech.com/careers/open-positions/',r'/job|position'),('Trackman','https://careers.trackman.com/',r'/o/'),('WSA/Widex','https://careersemea.wsa.com/jobs',r'/jobs/')]
+ weekday=[('DTU JobTeaser','https://dtu.jobteaser.com/en/job-offers',r'/job-offers/.+'),('LinkedIn Jobs','https://www.linkedin.com/jobs/search/?'+urlencode({'keywords':'student AI Python software electronics testing','location':'Copenhagen, Denmark','f_TPR':'r604800','sortBy':'DD'}),r'/jobs/view/'),('Jobindex','https://www.jobindex.dk/jobsoegning?q=student&jobage=7&sort=date',r'/jobannonce/'),('StuderendeOnline','https://studerendeonline.dk/job/?cvtype=4&amt=2&amt=3&oprettet='+datetime.now(TZ).strftime('%d.%m.%Y'),r'/job/\d+/')]
+ twice=[('Jobdanmark','https://jobdanmark.dk/jobsoeger/find-job',r'/job/'),('Jobbank','https://jobbank.dk/job/?cvtype=4&amt=2&amt=3',r'/job/\d+/'),('Workindenmark','https://workindenmark.jobnet.dk/find-job',r'/job'),('The Hub','https://thehub.io/jobs?countryCode=DK&search=student',r'/jobs/[a-f0-9]{24}'),('Demant/Oticon','https://careers.demant.com/',r'/job/'),('GN','https://www.gn.com/Working-with-us',r'/job'),('Presto Engineering','https://www.presto-eng.com/career-page',r'/job|career'),('Napatech','https://www.napatech.com/careers/open-positions/',r'/job|position'),('Trackman','https://careers.trackman.com/',r'/o/'),('WSA/Widex','https://careersemea.wsa.com/jobs',r'/jobs/'),('Ramboll','https://www.ramboll.com/careers/open-jobs',r'/career|/job|/careers/')]
  return weekday if group=='weekday' else twice if group=='twice' else weekday+twice
 
 def discover(client,site,url,pattern,days):
@@ -159,7 +160,7 @@ def discover(client,site,url,pattern,days):
   if not isinstance(target,str) or urlparse(target).scheme!='https':continue
   employer=j.get('hiringOrganization') or {};loc=j.get('jobLocation') or {}
   if isinstance(loc,list):loc=loc[0] if loc else {}
-  found.append({'id':hashlib.sha256(canonical(target).encode()).hexdigest()[:20],'url':target,'role':title,'company':employer.get('name','') if isinstance(employer,dict) else str(employer),'location':plain((loc.get('address') or {}).get('addressLocality','')) if isinstance(loc,dict) and isinstance(loc.get('address'),dict) else '', 'posted_date':date,'deadline':str(j.get('validThrough',''))[:10],'description':desc[:15000],'source':site,'discovered_at':stamp(),'state':'pending','why_fit':'Keyword match to student electronics/testing/design priorities. This is a rule-based suggestion, not a confirmed assessment.','missing':'Verify language, exact workplace, cycling distance/time, public transport, student eligibility, mandatory skills and actual monthly roster before saving.'})
+  found.append({'id':hashlib.sha256(canonical(target).encode()).hexdigest()[:20],'url':target,'role':title,'company':employer.get('name','') if isinstance(employer,dict) else str(employer),'location':plain((loc.get('address') or {}).get('addressLocality','')) if isinstance(loc,dict) and isinstance(loc.get('address'),dict) else '', 'posted_date':date,'deadline':str(j.get('validThrough',''))[:10],'description':desc[:15000],'source':site,'discovered_at':stamp(),'state':'pending','why_fit':'Keyword match to student AI/Python, software, automation/testing and electronics priorities. This is a rule-based suggestion, not a confirmed assessment.','missing':'Verify language, exact workplace, cycling distance/time, public transport, student eligibility, mandatory skills and actual monthly roster before saving.'})
  status='Checked · limited public coverage' if structured else 'Browser/manual review needed'
  return found,{'status':status,'detail':f'{pages} public index pages scanned; {len(indexed)} result cards parsed; {len(links[:15])} relevant detail links attempted; {len(found)} fresh candidates. Portal-card candidates require original-posting verification. No complete inventory claimed. '+('; '.join(errors[:2]) if errors else '')}
 
@@ -169,6 +170,7 @@ class Runner:
   if self.state.get('running'):self.state['message']='Previous search was interrupted. You can run it again.'
   self.state['running']=False
  def start(self,group='all',days=7):
+  self.stop_requested=False
   available={site for site,_,_ in sources('all')}
   if group not in ('all','weekday','twice') and group not in available:raise ValueError('Unknown website')
   with GUARD:
@@ -180,8 +182,9 @@ class Runner:
   client=PublicClient()
   try:
    selected=sources(group) if group in ('all','weekday','twice') else [s for s in sources('all') if s[0]==group]
-   if group=='all':selected=[s for s in selected if s[0] not in ('DTU JobTeaser','LinkedIn Jobs')]
+   if group=='all':selected=[s for s in selected if s[0] not in ('DTU JobTeaser','LinkedIn Jobs','Jobdanmark','The Hub')]
    for site,url,pattern in selected:
+    if self.stop_requested:break
     self.state['message']='Checking '+site;write(ROOT/'job_scraper/local_search_state.json',self.state)
     try:found,result=discover(client,site,url,pattern,days)
     except Exception as e:found=[];result={'status':'Blocked / failed','detail':str(e)}

@@ -29,6 +29,20 @@ class BrowserTests(unittest.TestCase):
             snapshot=self.posting(**changes);record,reason=parse_posting('DTU JobTeaser',snapshot['url'],snapshot)
             self.assertIsNone(record);self.assertIn(expected,reason)
 
+    def test_public_browser_dates_do_not_use_updated_labels(self):
+        self.assertTrue(job_link('Jobdanmark','https://jobdanmark.dk/job/student-python'))
+        self.assertFalse(job_link('Jobdanmark','https://evil.example/job/student-python'))
+        today=datetime.now(TZ).date()
+        snapshot={'url':'https://jobdanmark.dk/job/student-python','scripts':[],
+                  'headings':['Student Python Developer'],
+                  'text':'Student Python testing. Published: '+today.strftime('%d-%m-%Y')}
+        value,reason=parse_posting('Jobdanmark',snapshot['url'],snapshot)
+        self.assertEqual(value['posted_date'],today.isoformat())
+        snapshot['text']='Student Python testing. Updated: '+today.strftime('%d-%m-%Y')
+        value,reason=parse_posting('Jobdanmark',snapshot['url'],snapshot)
+        self.assertIsNone(value)
+        self.assertIn('unverified',reason)
+
     def test_login_and_strict_job_urls(self):
         self.assertIn('Sign in',blocked_reason('DTU JobTeaser',{'url':'https://dtu.jobteaser.com/en/login','title':'Login','text':'','links':[]}))
         self.assertFalse(job_link('DTU JobTeaser','https://dtu.jobteaser.com.evil.example/en/job-offers/id'))
@@ -79,7 +93,7 @@ class BrowserTests(unittest.TestCase):
             root=Path(folder);service=BrowserService(root);service.context=FixtureContext();page=FixturePage()
             with patch.object(service,'site_page',return_value=page):service.search('DTU JobTeaser')
             state=service.snapshot();self.assertEqual(state['pages_read'],2);self.assertEqual(state['details_checked'],2)
-            self.assertEqual(state['added'],2);self.assertEqual(state['status'],'partial')
+            self.assertEqual(state['added'],2);self.assertEqual(state['status'],'completed_targeted')
             inbox=read(root/'job_scraper/candidate_inbox.json',{})
             self.assertTrue(all(j['state']=='pending' for j in inbox.values()))
             self.assertFalse((root/'job_scraper/dashboard_records.json').exists())
