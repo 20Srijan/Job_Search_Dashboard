@@ -49,3 +49,9 @@ Run `python -m unittest test_browser_search -v`. These tests use fixtures and ma
 
 ## Development decisions
 See [PROJECT.md](PROJECT.md) for the problem, workflow and personal contribution.
+
+## Latest dashboard update
+- Click the deadline summary card to show jobs due today through the next seven calendar days.
+- The shortlist includes an All deadlines / Due within 7 days filter; Show all retained jobs clears it.
+- Removed the separate deadline-reminders panel to avoid duplicate deadline information.
+- The deadline count and filtered list use the same rules and Denmark calendar dates.

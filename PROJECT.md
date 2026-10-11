@@ -14,3 +14,6 @@ Python local HTTP service, HTML/CSS/JavaScript dashboard, public-site parsers an
 
 ## Evidence and boundaries
 Tests use controlled fixtures for date validation, blocked/login detection, removed-job deduplication and pagination. They do not establish exhaustive or reliable live coverage. No measured time savings or autonomous AI-agent capabilities are claimed. Future work includes portal robustness, configurable rules and stronger end-to-end verification.
+
+## Deadline browsing
+The deadline summary card opens the shortlist with a seven-day deadline filter. Other filters are cleared so the list agrees with the count. Today and the seventh day are included; passed, undated and closed/removed records are excluded. The duplicate reminder panel was removed.
