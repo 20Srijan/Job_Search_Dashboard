@@ -204,7 +204,7 @@ class BrowserService:
                         page = self.site_page(site)
                         page.goto(SITES[site], wait_until='domcontentloaded', timeout=30000)
                         page.bring_to_front()
-                    self.update(status='ready', message='Browser opened. Sign in directly, then click the website Search button.')
+                    self.update(status='ready', message=(f'{site} opened. Your saved session is reused; sign in only if the website asks, then click Search.' if site in ('DTU JobTeaser', 'LinkedIn Jobs') else f'{site} opened. No login is needed for public search; click Search.' if site else 'Browser opened with your saved local profile. Existing sign-ins are reused. Click a website Search button to start.'))
                 elif action == 'all':
                     results = []
                     for name in SITES:

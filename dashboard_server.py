@@ -96,7 +96,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/data':
                 return self.reply({'jobs': rows(), 'documents': documents(), 'profile': (ROOT / 'PROFILE-AND-TIMELINE.md').read_text(encoding='utf-8'), 'search_health': read_json(ROOT / 'job_scraper/search_health.json', []), 'token': TOKEN})
             if path == '/api/search':
-                return self.reply({'all': dict(ALL_STATE), 'run': SEARCH.state, 'browser': BROWSER.snapshot(), 'candidates': list(read_json(ROOT / 'job_scraper/candidate_inbox.json', {}).values()),'sources':[{'name':name,'url':url,'browser_required':name in BROWSER_SITES} for name,url,_ in sources('all')]})
+                return self.reply({'all': dict(ALL_STATE), 'run': SEARCH.state, 'browser': BROWSER.snapshot(), 'candidates': list(read_json(ROOT / 'job_scraper/candidate_inbox.json', {}).values()),'sources':[{'name':name,'url':url,'browser_required':name in BROWSER_SITES,'login_required':name in ('DTU JobTeaser','LinkedIn Jobs')} for name,url,_ in sources('all')]})
             if path == '/':
                 return self.reply((ROOT / 'index.html').read_bytes(), mime='text/html; charset=utf-8')
             if path.startswith('/files/'):
