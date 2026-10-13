@@ -63,9 +63,9 @@ def rows():
                 source = value.get('source', '')
                 existing = next((k for k, v in result.items() if source and v.get('url') == source), None)
                 uid = existing or 'tracker-' + hashlib.sha256((str(i)+value.get('company','')+value.get('role','')).encode()).hexdigest()[:16]
-                result[uid] = dict(result.get(uid, {}), **value, id=uid, url=source, origin='Application tracker')
+                result[uid] = {**result.get(uid, {}), **value, 'id': uid, 'url': source, 'origin': 'Application tracker'}
     for uid, value in read_json(STATE, {}).items():
-        result[uid] = dict(result.get(uid, {}), **value, id=uid)
+        result[uid] = {**result.get(uid, {}), **value, 'id': uid}
     return list(result.values())
 
 def documents():
@@ -167,7 +167,7 @@ class Handler(BaseHTTPRequestHandler):
                 saved = read_json(STATE, {})
                 previous=next((j for j in rows() if j['id']==uid),{})
                 fields=('company','role','status','url','deadline','posted_date','older_fit_exception','category','location','fit','fit_level','commute','monthly_hours','danish','notes','cv_file','cover_letter_file','why_fit','missing','commute_mode','commute_rule_status','cycling_options','cycle_distance_km','cycle_minutes','transit_minutes','cycling_source','commute_assessment','commute_source','hours_assessment','verification_date','status_date','applied_date','interview_date')
-                saved[uid]=dict(previous,**saved.get(uid,{}),**{k:item[k] for k in fields if k in item})
+                saved[uid]={**previous, **saved.get(uid,{}), **{k:item[k] for k in fields if k in item}}
                 backups=ROOT/'backups';backups.mkdir(exist_ok=True)
                 if STATE.exists():
                     (backups/('dashboard_records-'+datetime.now().strftime('%Y%m%d-%H%M%S-%f')+'.json')).write_bytes(STATE.read_bytes())

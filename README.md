@@ -54,3 +54,7 @@ See [PROJECT.md](PROJECT.md) for the problem, workflow and personal contribution
 Search all websites now runs public readers followed by browser readers. The launcher keeps the service running in its window; keep it open. The dashboard opens in the default browser after a successful local API check. Sign in directly in the dedicated browser when needed. Offline copies explain that they cannot run searches. Connection failures now show an error rather than waiting indefinitely. Ramboll is included in public discovery.
 
 The summary cards filter saved jobs, active applications, interviews and deadlines. Applied jobs appear under active applications. Design/UI/UX roles are excluded from the technical discovery rules. The distributed profile panel is generic; personal education and project history are not included. Local startup was confirmed by the user; live signed-in website integration remains to be validated.
+
+## Application tracking and source update
+
+Active applications are sorted with Preparing jobs by nearest deadline, then other Preparing jobs, then Applied. The Applications tab shows Applied before Preparing. Listings display recorded discovery websites and links; unknown discovery history is distinguished from the hosting website. Offline HTML copies redirect to the live local dashboard, carrying earlier edits for review. Conflicts preserve live values by default, notes are merged, and repeated imports are recognised. Overlapping status fields now save without duplicate-keyword errors. Existing authenticated writes are retained.

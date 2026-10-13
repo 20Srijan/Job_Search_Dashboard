@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 from zoneinfo import ZoneInfo
 ROOT=Path(__file__).resolve().parent
 TZ=ZoneInfo('Europe/Paris')
-UA='SrijanJobDashboard/1.0'
+UA='LocalJobDashboard/1.0'
 GUARD=threading.Lock()
 
 def read(path,default):
