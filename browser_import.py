@@ -3,6 +3,7 @@ import hashlib,json,re
 from datetime import datetime,timedelta
 from urllib.parse import urlparse
 from independent_search import read,write,canonical,stamp,TZ,relevant
+from job_exclusions import removed_jobs,is_removed
 
 def site_for(url):
  parsed=urlparse(url)
@@ -34,7 +35,7 @@ def import_page(root,payload):
   if site=='DTU JobTeaser' and not re.match(r'^/(en|da)/job-offers/[^/]+',path):ignored+=1;continue
   if site=='LinkedIn Jobs' and not re.match(r'^/jobs/view/\d+',path):ignored+=1;continue
   url=canonical(url);key=hashlib.sha256(url.encode()).hexdigest()[:20]
-  if not relevant(title+' '+str(raw.get('description',''))) or url in known or key in inbox or raw.get('company') and identity(raw) in identities:ignored+=1;continue
+  if is_removed(raw,removed_jobs(root)) or not relevant(title+' '+str(raw.get('description',''))) or url in known or key in inbox or raw.get('company') and identity(raw) in identities:ignored+=1;continue
   posted=raw.get('posted_date','')
   if not isinstance(posted,str):posted=''
   try:

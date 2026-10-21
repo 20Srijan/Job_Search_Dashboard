@@ -9,6 +9,7 @@ from urllib.error import HTTPError
 from urllib.robotparser import RobotFileParser
 import math
 import xml.etree.ElementTree as ET
+from job_exclusions import removed_jobs,is_removed
 from zoneinfo import ZoneInfo
 ROOT=Path(__file__).resolve().parent
 TZ=ZoneInfo('Europe/Paris')
@@ -197,7 +198,7 @@ class Runner:
      identity=lambda j:re.sub(r'\W+','',j.get('company','').lower())+'|'+re.sub(r'\W+','',j.get('role','').lower())
      identities={identity(j) for j in list(seen.values())+list(overlays.values())+list(inbox.values()) if j.get('company') and j.get('role')}
      for j in found:
-      if canonical(j['url']) not in known and j['id'] not in inbox and identity(j) not in identities:
+      if not is_removed(j,removed_jobs(ROOT)) and canonical(j['url']) not in known and j['id'] not in inbox and identity(j) not in identities:
        inbox[j['id']]=j;self.state['added']+=1;identities.add(identity(j))
      write(ROOT/'job_scraper/candidate_inbox.json',inbox)
      health=read(ROOT/'job_scraper/search_health.json',[]);item=next((x for x in health if x['site']==site),None)

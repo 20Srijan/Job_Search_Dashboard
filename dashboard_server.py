@@ -9,6 +9,8 @@ import threading
 from datetime import datetime
 from independent_search import Runner, read as local_read, write as atomic_write, GUARD, canonical, sources
 from browser_import import import_page
+from job_exclusions import removed_jobs, is_removed
+from selection_preferences import refresh as refresh_preferences
 from browser_search import BrowserService, SITES as BROWSER_SITES
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -66,7 +68,8 @@ def rows():
                 result[uid] = {**result.get(uid, {}), **value, 'id': uid, 'url': source, 'origin': 'Application tracker'}
     for uid, value in read_json(STATE, {}).items():
         result[uid] = {**result.get(uid, {}), **value, 'id': uid}
-    return list(result.values())
+    removed = removed_jobs(ROOT)
+    return [j for j in result.values() if j.get('status') not in ('saved', 'drafting') or not is_removed(j, removed)]
 
 def documents():
     out = []
@@ -96,7 +99,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/data':
                 return self.reply({'jobs': rows(), 'documents': documents(), 'profile': (ROOT / 'PROFILE-AND-TIMELINE.md').read_text(encoding='utf-8'), 'search_health': read_json(ROOT / 'job_scraper/search_health.json', []), 'token': TOKEN})
             if path == '/api/search':
-                return self.reply({'all': dict(ALL_STATE), 'run': SEARCH.state, 'browser': BROWSER.snapshot(), 'candidates': list(read_json(ROOT / 'job_scraper/candidate_inbox.json', {}).values()),'sources':[{'name':name,'url':url,'browser_required':name in BROWSER_SITES,'login_required':name in ('DTU JobTeaser','LinkedIn Jobs')} for name,url,_ in sources('all')]})
+                return self.reply({'all': dict(ALL_STATE), 'run': SEARCH.state, 'browser': BROWSER.snapshot(), 'candidates': [j for j in read_json(ROOT / 'job_scraper/candidate_inbox.json', {}).values() if not is_removed(j, removed_jobs(ROOT))],'sources':[{'name':name,'url':url,'browser_required':name in BROWSER_SITES,'login_required':name in ('DTU JobTeaser','LinkedIn Jobs')} for name,url,_ in sources('all')]})
             if path == '/':
                 return self.reply((ROOT / 'index.html').read_bytes(), mime='text/html; charset=utf-8')
             if path.startswith('/files/'):
@@ -166,6 +169,8 @@ class Handler(BaseHTTPRequestHandler):
             with LOCK, GUARD:
                 saved = read_json(STATE, {})
                 previous=next((j for j in rows() if j['id']==uid),{})
+                if item.get('status') != 'removed' and is_removed({**previous, **item, 'id':uid}, removed_jobs(ROOT)):
+                    raise ValueError('You previously removed this job. It is excluded from future searches and saves.')
                 fields=('company','role','status','url','deadline','posted_date','older_fit_exception','category','location','fit','fit_level','commute','monthly_hours','danish','notes','cv_file','cover_letter_file','why_fit','missing','commute_mode','commute_rule_status','cycling_options','cycle_distance_km','cycle_minutes','transit_minutes','cycling_source','commute_assessment','commute_source','hours_assessment','verification_date','status_date','applied_date','interview_date')
                 saved[uid]={**previous, **saved.get(uid,{}), **{k:item[k] for k in fields if k in item}}
                 backups=ROOT/'backups';backups.mkdir(exist_ok=True)
@@ -174,10 +179,18 @@ class Handler(BaseHTTPRequestHandler):
                 temp = STATE.with_suffix('.tmp')
                 temp.write_text(json.dumps(saved, indent=2, ensure_ascii=False), encoding='utf-8')
                 os.replace(temp, STATE)
+                if saved[uid].get('status') == 'removed':
+                    exclusion_path = ROOT/'job_scraper/removed_jobs.json'
+                    exclusions = read_json(exclusion_path,{})
+                    exclusions[uid] = saved[uid]
+                    atomic_write(exclusion_path, exclusions)
                 inbox=read_json(ROOT/'job_scraper/candidate_inbox.json',{})
                 for candidate in inbox.values():
-                    if item.get('url') and canonical(candidate['url'])==canonical(item['url']):candidate['state']='saved'
+                    if is_removed(candidate, removed_jobs(ROOT)):
+                        candidate['state']='dismissed'
+                    elif item.get('url') and canonical(candidate['url'])==canonical(item['url']):candidate['state']='saved'
                 atomic_write(ROOT/'job_scraper/candidate_inbox.json',inbox)
+                refresh_preferences(ROOT, rows())
             self.reply({'id': uid})
         except (ValueError, TypeError, OSError) as exc:
             self.reply({'error': str(exc)}, 400)

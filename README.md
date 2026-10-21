@@ -58,3 +58,14 @@ The summary cards filter saved jobs, active applications, interviews and deadlin
 ## Application tracking and source update
 
 Active applications are sorted with Preparing jobs by nearest deadline, then other Preparing jobs, then Applied. The Applications tab shows Applied before Preparing. Listings display recorded discovery websites and links; unknown discovery history is distinguished from the hosting website. Offline HTML copies redirect to the live local dashboard, carrying earlier edits for review. Conflicts preserve live values by default, notes are merged, and repeated imports are recognised. Overlapping status fields now save without duplicate-keyword errors. Existing authenticated writes are retained.
+
+
+## Removal memory and application-choice evidence
+
+Removing a saved or preparing job records a persistent local exclusion. Discovery and browser imports skip matching URLs (including tracking variants) and company/title cross-posts. Matching jobs also stay out of the review inbox and cannot be saved again accidentally. Existing removals are included. An employer-wide ban is never inferred from a single removal.
+
+After a record edit, `selection_preferences.py` refreshes a local evidence summary of applied, preparing and removed roles. Applications rejected by an employer remain positive interest evidence. Removed jobs have no inferred reason: a closed listing is not proof that its duties are unwanted. A future assistant can use the summary with the local profile when assessing relevance; the runtime does not train a model or automatically rescore suitability.
+
+These files remain private under the ignored `job_scraper/` directory: `removed_jobs.json` and `selection_preferences.json`. No saved listings, personal profile, CVs, project reports or application history are distributed.
+
+Run regression checks with `python -m unittest test_browser_search test_job_exclusions test_selection_preferences -v`.
