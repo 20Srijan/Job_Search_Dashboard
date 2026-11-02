@@ -52,6 +52,7 @@ def read_json(path, default):
 
 def rows():
     result = {}
+    overlays = read_json(STATE, {})
     seen = read_json(ROOT / 'job_scraper/seen_jobs.json', {'seen': {}}).get('seen', {})
     for key, value in seen.items():
         if not isinstance(value, dict):
@@ -64,9 +65,11 @@ def rows():
             for i, value in enumerate(csv.DictReader(stream)):
                 source = value.get('source', '')
                 existing = next((k for k, v in result.items() if source and v.get('url') == source), None)
+                if existing is None:
+                    existing = next((k for k, v in overlays.items() if source and v.get('url') == source), None)
                 uid = existing or 'tracker-' + hashlib.sha256((str(i)+value.get('company','')+value.get('role','')).encode()).hexdigest()[:16]
                 result[uid] = {**result.get(uid, {}), **value, 'id': uid, 'url': source, 'origin': 'Application tracker'}
-    for uid, value in read_json(STATE, {}).items():
+    for uid, value in overlays.items():
         result[uid] = {**result.get(uid, {}), **value, 'id': uid}
     removed = removed_jobs(ROOT)
     return [j for j in result.values() if j.get('status') not in ('saved', 'drafting') or not is_removed(j, removed)]

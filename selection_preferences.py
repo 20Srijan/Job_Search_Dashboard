@@ -16,7 +16,8 @@ def refresh(root, jobs):
         'purpose': 'Evidence for future search and sorting; not candidate qualifications.',
         'rules': [
             'Use actual duties and verified skills, not employer name, category labels or AI in the title alone.',
-            'Prioritise software testing/verification, engineering/electronics and hands-on AI/Python/data automation.',
+            'Explicit user priority, 2 November 2026: search electronics and electrical-engineering roles first across all relevant specialisms, because this is the candidate study field. Include FPGA/RTL/VLSI, embedded systems, circuits, instrumentation, power electronics, communications, hardware development and hardware testing/verification; do not restrict the first priority to FPGA alone.',
+            'Software testing, AI/Python/data automation and technical IT/support are secondary to relevant electronics/electrical-engineering work. Judge relevance from actual duties; an electronics employer or category label alone is insufficient. Preserve verified-fit/deadline ordering and all eligibility constraints.',
             'Retain technical research, laboratory and teaching opportunities; applied IT/support roles show secondary interest.',
             'Rank generic business strategy, administration-heavy process support, content/design and warehouse duties lower; recent removals support caution, not a permanent domain ban.',
             'An application is a positive interest signal, not evidence that language, commute, hours or eligibility gaps are resolved.',
